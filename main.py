@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jul  2 15:29:10 2019
+MultiCompile v0.2-alpha
+Généré le 08 Juillet 2019
+@author: Th. G
 
-@author: thibault
+Ce logiciel est mis à disposition sous licence Creatice Commons 
+(Pas d'utilisation commerciale, Partage dans les mêmes conditions).
 """
 
 import re
 from subprocess import call
 import os
+import platform
+from pathlib import Path
 from shutil import copyfile
 from PyQt5.QtCore import QDateTime, Qt, QTimer
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QFileDialog, QApplication, QComboBox, QDialog, QGridLayout, QGroupBox, 
                              QHBoxLayout, QLabel, QPushButton, QScrollBar, QSizePolicy, QTextEdit,
-                             QTableWidget, QVBoxLayout, QWidget, QTableWidgetItem, QHeaderView)
+                             QTableWidget, QTabWidget, QVBoxLayout, QWidget, QTableWidgetItem,
+                             QHeaderView)
 
 
 class main(QDialog):
@@ -28,7 +34,7 @@ class main(QDialog):
                 QSizePolicy.Ignored)
         
         def createtable(self):
-            tableWidget.setHorizontalHeaderLabels(["Emplacement", "Nom", "Autre"]) 
+            tableWidget.setHorizontalHeaderLabels(["Emplacement", "Nom", "Ouvrir", "Supprimer" ]) 
             rows = tableWidget.rowCount()
             columns = tableWidget.columnCount()
             for i in range(rows):
@@ -37,34 +43,56 @@ class main(QDialog):
                     item.setFlags(Qt.ItemIsEnabled)
                     tableWidget.setItem(i, j, item)
 
-        tableWidget = QTableWidget(1, 3)
+        tableWidget = QTableWidget(1, 4)
         createtable(self)
         header = tableWidget.horizontalHeader()       
         header.setSectionResizeMode(0, QHeaderView.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         GroupBoxLayout = QVBoxLayout()
         GroupBoxLayout.setContentsMargins(5, 5, 5, 5)
         GroupBoxLayout.addWidget(tableWidget)
         addPushButton = QPushButton("Ajouter un emplacement")
         addPushButton.setDefault(True)
         GroupBoxLayout.addWidget(addPushButton)
-        rmPushButton = QPushButton("Supprimer l'emplacement sélectionné")
-        rmPushButton.setDefault(True)
-        GroupBoxLayout.addWidget(rmPushButton)
         GroupBoxLayout.addStretch(1)
         GroupBox.setLayout(GroupBoxLayout)
         
         
-        LogBox = QGroupBox("Log")
+        LogBox = QTabWidget()
+        
+        
+        # Initialize tab screen
+        tab1 = QWidget()
+        tab2 = QWidget()
+        
+
+        LogBox.addTab(tab1,"Log")
+        LogBox.addTab(tab2,"Détails")
+        
+
+        tab1.layout = QVBoxLayout(self)
+        
         textEdit = QTextEdit()
         textEdit.setReadOnly(True)
         log = "Bienvenue dans MultiCompile !\n"
         textEdit.setPlainText(log)
-        LogBoxLayout = QHBoxLayout()
-        LogBoxLayout.setContentsMargins(5, 5, 5, 5)
-        LogBoxLayout.addWidget(textEdit)
-        LogBox.setLayout(LogBoxLayout)
+ 
+        tab1.layout.addWidget(textEdit)
+        tab1.setLayout(tab1.layout)
+        
+        tab2.layout = QVBoxLayout(self)
+        
+        textEdit2 = QTextEdit()
+        textEdit2.setReadOnly(True)
+        latex = "Opérations terminées !\n" + "Les fichiers suivants vous donneront plus d'informations sur les opérations de compilation et les erreurs :\n"
+        LogBox.setTabEnabled(1,False)
+        textEdit2.setPlainText(latex)
+ 
+        tab2.layout.addWidget(textEdit2)
+        tab2.setLayout(tab2.layout)
+        
         
                 
         ParamBox = QGroupBox("Paramètres")
@@ -121,6 +149,9 @@ class main(QDialog):
             def refresh_textedit(MYSTRING): 
                 textEdit.append(str(MYSTRING)) #append string
                 QApplication.processEvents() #update gui for pyqt
+            def refresh_textedit2(MYSTRING): 
+                textEdit2.append(str(MYSTRING)) #append string
+                QApplication.processEvents() #update gui for pyqt
         
             rowPosition = tableWidget.rowCount()
             log = str(rowPosition-1) + ' emplacement(s) chargé(s). Les documents seront disponibles dans un sous-dossier output.'
@@ -146,7 +177,7 @@ class main(QDialog):
                 
                 def compile(mypath, h):
                     error = 0
-                    f = open(mypath + "/master.tex","r")
+                    f = open(Path(mypath + "/master.tex"),"r")
                     print(f)
                     contents = f.readlines()
                     c = 0
@@ -166,36 +197,54 @@ class main(QDialog):
                         jobname = '-jobname=' + chapter + '_' + h + '-' + 'master'
                         options = '"\input{master}"'
                         compiler = str(compilerComboBox.currentText())
-                        call([compiler, jobname, options])
-                        try:
-                            os.mkdir(init_path + '/output')
-                        except FileExistsError:
+                        refresh_textedit("Compilation en cours...")
+                        success = call([compiler, jobname, options])
+                        if success == 0 :
+                            try:
+                                os.mkdir(Path(init_path + '/output'))
+                            except FileExistsError:
+                                pass
+                            try:
+                                copyfile(Path(mypath + '/' + chapter + '_' + h + '-' + 'master' + '.pdf') ,Path(init_path + 'output/' + chapter + '_' + h + '-' + 'master' + '.pdf'))
+                            except FileNotFoundError:
+                                refresh_textedit('Une erreur est survenue lors de la copie du pdf...')
+                                error+=1
+                        else :
                             error+=1
-                        copyfile(mypath + '/' + chapter + '_' + h + '-' + 'master' + '.pdf' ,init_path + 'output/' + chapter + '_' + h + '-' + 'master' + '.pdf')
+                        
+                        refresh_textedit2(mypath + '/' + chapter + '_' + h + '-' + 'master' + '.log')
+                        refresh_textedit('Compilation de "' + h + '" terminée avec ' + str(error) + ' erreur(s).')
                     else :
                         refresh_textedit('Les audiences trouvées dans "' + h + '" sont : ' + str(audiences) + '.')
-                        refresh_textedit(str(len(audiences)) + ' documents pdf seront créés !')
+                        refresh_textedit(str(len(audiences)) + ' documents pdf seront créés !\n' + 'Compilation en cours...')
                         
                         for j in audiences :
                             call('cd ' + mypath, shell=True)
                             jobname = '-jobname=' + chapter + '_' + h + '-' + j
                             options = '"\def\CurrentAudience{' + j + '}\input{master}"'
                             compiler = str(compilerComboBox.currentText())
-                            call([compiler, jobname, options])
-                            try:
-                                os.mkdir(init_path + '/output')
-                            except FileExistsError:
-                                pass
-                            try:
-                                copyfile(mypath + '/' + chapter + '_' + h + '-' + j + '.pdf' ,init_path + 'output/' + chapter + '_' + h + '-' + j + '.pdf')
-                            except FileNotFoundError:
-                                refresh_textedit('Une erreur est survenue lors de la copie du pdf...')
+                            success = call([compiler, jobname, options])
+                            if success == 0 :
+                                try:
+                                    os.mkdir(Path(init_path + '/output'))
+                                except FileExistsError:
+                                    pass
+                                try:
+                                    copyfile(Path(mypath + '/' + chapter + '_' + h + '-' + j + '.pdf') , Path(init_path + 'output/' + chapter + '_' + h + '-' + j + '.pdf'))
+                                except FileNotFoundError:
+                                    refresh_textedit('Une erreur est survenue lors de la copie du pdf...')
+                                    error+=1
+                            else :
                                 error+=1
-                            #os.system('xdg-open ' + name + '-' + j + '.pdf > /dev/null')
                             
+                            refresh_textedit2(mypath + '/' + chapter + '_' + h + '-' + j + '.log')
+                            #os.system('xdg-open ' + name + '-' + j + '.pdf > /dev/null')
+                        
+                        #LogBox.setCurrentWidget(tab1)
                         refresh_textedit('Compilation de "' + h + '" terminée avec ' + str(error) + ' erreur(s).')
+
                 
-                if os.path.exists(init_path + '/master.tex'):
+                if os.path.exists(Path(init_path + '/master.tex')):
                     newpath = os.path.normpath(init_path)
                     h = str(os.path.basename(os.path.normpath(newpath)))
                     os.chdir(newpath)
@@ -213,6 +262,9 @@ class main(QDialog):
                         
                     else :
                         refresh_textedit('Pas de fichier \"master.tex\" trouvé dans ' + str(h) + '...')
+                        
+            LogBox.setTabEnabled(1,True)
+            LogBox.setCurrentWidget(tab2)
                     
         def add_path() :
             file = str(QFileDialog.getExistingDirectory(self, "Selectionner un dossier"))
@@ -223,11 +275,30 @@ class main(QDialog):
             chapter = QTableWidgetItem()
             chapter.setText(os.path.basename(os.path.normpath(file)))
             tableWidget.setItem(rowPosition-1, 1, chapter)
+            viewPushButton = QPushButton(tableWidget)
+            viewPushButton.setText('Ouvrir')
+            tableWidget.setCellWidget(rowPosition-1, 2, viewPushButton)
+            rmPushButton = QPushButton(tableWidget)
+            rmPushButton.setText('Supprimer')
+            tableWidget.setCellWidget(rowPosition-1, 3, rmPushButton)
             tableWidget.insertRow(rowPosition)
+            rmPushButton.clicked.connect(rm_path)
+            viewPushButton.clicked.connect(open_path)
+        
+        def open_path() :
+            button = QApplication.focusWidget()
+            index = tableWidget.indexAt(button.pos())
+            location = str(tableWidget.item(index.row(), 0).text())
+            system = platform.system()
+            if system == "Linux" :
+                os.system('xdg-open "%s"' % location)
+            else :
+                os.startfile(location)
 
         def rm_path(self) :
-            selected = tableWidget.currentRow()
-            tableWidget.removeRow(selected)
+            button = QApplication.focusWidget()
+            index = tableWidget.indexAt(button.pos())
+            tableWidget.removeRow(index.row())
             
         def save_param() :
             save_path = os.path.dirname(os.path.realpath(__file__)) + "/config.txt"
@@ -242,7 +313,6 @@ class main(QDialog):
             print('Configuration sauvegardée !')
             
         addPushButton.clicked.connect(add_path)
-        rmPushButton.clicked.connect(rm_path)
         runPushButton.clicked.connect(run)
         savePushButton.clicked.connect(save_param)
 
