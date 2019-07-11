@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-MultiCompile v0.2-alpha
-Généré le 08 Juillet 2019
+MultiCompile v0.3-alpha
+Généré le 11 Juillet 2019
 @author: Th. G
 
 Ce logiciel est mis à disposition sous licence Creatice Commons 
@@ -12,7 +12,14 @@ Ce logiciel est mis à disposition sous licence Creatice Commons
 import re
 from subprocess import call
 import os
+import sys
 import platform
+system = platform.system()
+if system == "Linux" :
+    pass
+else :
+    if hasattr(sys, 'frozen'):
+        os.environ['PATH'] = sys._MEIPASS + ";" + os.environ['PATH']
 from pathlib import Path
 from shutil import copyfile
 from PyQt5.QtCore import QDateTime, Qt, QTimer
@@ -21,6 +28,7 @@ from PyQt5.QtWidgets import (QFileDialog, QApplication, QComboBox, QDialog, QGri
                              QHBoxLayout, QLabel, QPushButton, QScrollBar, QSizePolicy, QTextEdit,
                              QTableWidget, QTabWidget, QVBoxLayout, QWidget, QTableWidgetItem,
                              QHeaderView)
+
 
 
 class main(QDialog):
@@ -105,7 +113,7 @@ class main(QDialog):
         runPushButton.setStyleSheet("background-color: green; color: white")
         
         try :
-            f= open("config.txt","r")
+            f= open(Path(os.path.dirname(os.path.realpath(__file__)) + '/' +  "config.txt"),"r")
             contents = f.readlines()
             var = str(contents[0])
             #var2 = contents[1]
@@ -117,9 +125,9 @@ class main(QDialog):
             f.close()
         except FileNotFoundError:
             print('Pas de fichier config.txt !')
-            f= open("config.txt","w+")
+            f= open(Path(os.path.dirname(os.path.realpath(__file__)) + '/' + "config.txt"),"w+")
             contents = ["pdflatex"]
-            with open("config.txt", "w") as f:
+            with open(Path(os.path.dirname(os.path.realpath(__file__))  + '/' +  "config.txt"), "w") as f:
                 f.writelines(contents)
                 f.close()
         
@@ -194,11 +202,12 @@ class main(QDialog):
                     if audiences == [] :
                         refresh_textedit('Pas d\'audience trouvée dans "' + h + '"... La compilation simple du fichier tex va être lancée !')
                         call('cd ' + path, shell=True)
+                        nonstopmode = '-halt-on-error'
                         jobname = '-jobname=' + chapter + '_' + h + '-' + 'master'
                         options = '"\input{master}"'
                         compiler = str(compilerComboBox.currentText())
                         refresh_textedit("Compilation en cours...")
-                        success = call([compiler, jobname, options])
+                        success = call([compiler, nonstopmode, jobname, options])
                         if success == 0 :
                             try:
                                 os.mkdir(Path(init_path + '/output'))
@@ -211,8 +220,9 @@ class main(QDialog):
                                 error+=1
                         else :
                             error+=1
+                            pass
                         
-                        refresh_textedit2(mypath + '/' + chapter + '_' + h + '-' + 'master' + '.log')
+                        refresh_textedit2(Path(mypath + '/' + chapter + '_' + h + '-' + 'master' + '.log'))
                         refresh_textedit('Compilation de "' + h + '" terminée avec ' + str(error) + ' erreur(s).')
                     else :
                         refresh_textedit('Les audiences trouvées dans "' + h + '" sont : ' + str(audiences) + '.')
@@ -220,10 +230,11 @@ class main(QDialog):
                         
                         for j in audiences :
                             call('cd ' + mypath, shell=True)
+                            nonstopmode = '-halt-on-error'
                             jobname = '-jobname=' + chapter + '_' + h + '-' + j
                             options = '"\def\CurrentAudience{' + j + '}\input{master}"'
                             compiler = str(compilerComboBox.currentText())
-                            success = call([compiler, jobname, options])
+                            success = call([compiler, nonstopmode, jobname, options])
                             if success == 0 :
                                 try:
                                     os.mkdir(Path(init_path + '/output'))
@@ -236,8 +247,9 @@ class main(QDialog):
                                     error+=1
                             else :
                                 error+=1
+                                pass
                             
-                            refresh_textedit2(mypath + '/' + chapter + '_' + h + '-' + j + '.log')
+                            refresh_textedit2(Path(mypath + '/' + chapter + '_' + h + '-' + j + '.log'))
                             #os.system('xdg-open ' + name + '-' + j + '.pdf > /dev/null')
                         
                         #LogBox.setCurrentWidget(tab1)
