@@ -345,7 +345,7 @@ class MainWindow(QDialog):
             call('cd ' + self.mypath, shell=True)
             nonstopmode = '-halt-on-error'
             jobname = '-jobname=' + self.chapter + '_' + self.folder + '-master'
-            options = '"\def\ismulticompile{1}\def\CurrentAudience{' + self.audience + '}\input{master}"'
+            options = '"\input{master}"'
             compiler = str(self.compilerComboBox.currentText())
             
             self.command = [compiler, nonstopmode, jobname, options]
@@ -360,7 +360,7 @@ class MainWindow(QDialog):
                 except FileExistsError:
                     pass
                 try:
-                    copyfile(Path(self.mypath + '/' + self.chapter + '_' + self.folder + '-' + self.audience + '.pdf') , Path(self.init_path + 'output/' + self.chapter + '_' + self.folder + '-master' + '.pdf'))
+                    copyfile(Path(self.mypath + '/' + self.chapter + '_' + self.folder + '-master'  + '.pdf') , Path(self.init_path + 'output/' + self.chapter + '_' + self.folder + '-master' + '.pdf'))
                 except FileNotFoundError:
                     self.refresh_textedit('Une erreur est survenue lors de la copie du pdf...', "red")
                     error+=1
@@ -374,9 +374,6 @@ class MainWindow(QDialog):
             else:
                 self.refresh_textedit('Compilation du document ' + self.folder + '" terminée avec ' + str(error) + ' erreur(s).', "red")
                 self.refresh_textedit("Fichier log disponible ici : "+str(Path(self.mypath + '/' + self.chapter + '_' + self.folder + '-master' + '.log')), "red")
-
-            self.counter+=1
-
 
         else :
             self.refresh_textedit('Les audiences trouvées dans "' + self.folder + '" sont : ' + str(self.audiences) + '. Compilation en cours...', "black")
